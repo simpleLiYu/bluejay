@@ -313,7 +313,7 @@ extension Peripheral: CBPeripheralDelegate {
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         // 新增：获取服务列表并触发对外回调
         DispatchQueue.main.async {  // 切换主线程（可选，适配UI回调）
-            debugLog("新增：获取服务列表并触发对外回调\(self.bluejay)")
+            self.debugLog("新增：获取服务列表并触发对外回调\(self.bluejay)")
             let services = peripheral.services  // 获取发现的服务列表
             // 触发Bluejay单例的回调，传递「外设UUID + 服务列表 + 错误」
             self.bluejay?.onServicesDiscovered?(peripheral.identifier, services, error)
@@ -328,8 +328,7 @@ extension Peripheral: CBPeripheralDelegate {
     ) {
         // 新增：获取特征列表并触发对外回调
         DispatchQueue.main.async {
-            debugLog("新增：获取特征列表并触发对外回调\(self.bluejay)")
-
+            self.debugLog("新增：获取特征列表并触发对外回调\(self.bluejay)")
             let characteristics = service.characteristics
             self.bluejay?.onCharacteristicsDiscovered?(service.uuid, characteristics, error)
         }
