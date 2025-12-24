@@ -9,9 +9,7 @@
 import CoreBluetooth
 import Foundation
 
-/**
- An interface to the Bluetooth peripheral.
- */
+/// An interface to the Bluetooth peripheral.
 class Peripheral: NSObject {
 
     // MARK: Properties
@@ -64,25 +62,32 @@ class Peripheral: NSObject {
     }
 
     /// Queue the necessary operations needed to discover the specified characteristic.
-    private func discoverCharactersitic(_ characteristicIdentifier: CharacteristicIdentifier, callback: @escaping (DiscoveryResult) -> Void) {
+    private func discoverCharactersitic(
+        _ characteristicIdentifier: CharacteristicIdentifier,
+        callback: @escaping (DiscoveryResult) -> Void
+    ) {
         var discoverServiceFailed = false
 
-        addOperation(DiscoverService(
-            serviceIdentifier: characteristicIdentifier.service,
-            peripheral: cbPeripheral) { result in
-            switch result {
-            case .success:
-                // Do nothing and wait for the subsequent discover characteristic operation to complete.
-                break
-            case .failure(let error):
-                discoverServiceFailed = true
-                callback(.failure(error))
-            }
-        })
+        addOperation(
+            DiscoverService(
+                serviceIdentifier: characteristicIdentifier.service,
+                peripheral: cbPeripheral
+            ) { result in
+                switch result {
+                case .success:
+                    // Do nothing and wait for the subsequent discover characteristic operation to complete.
+                    break
+                case .failure(let error):
+                    discoverServiceFailed = true
+                    callback(.failure(error))
+                }
+            })
 
-        addOperation(DiscoverCharacteristic(
-            characteristicIdentifier: characteristicIdentifier,
-            peripheral: cbPeripheral) { result in
+        addOperation(
+            DiscoverCharacteristic(
+                characteristicIdentifier: characteristicIdentifier,
+                peripheral: cbPeripheral
+            ) { result in
                 if discoverServiceFailed {
                     return
                 } else {
@@ -93,7 +98,7 @@ class Peripheral: NSObject {
                         callback(.failure(error))
                     }
                 }
-        })
+            })
     }
 
     // MARK: - Bluetooth Event
@@ -110,7 +115,10 @@ class Peripheral: NSObject {
     }
 
     /// Read from a specified characteristic.
-    public func read<R: Receivable>(from characteristicIdentifier: CharacteristicIdentifier, completion: @escaping (ReadResult<R>) -> Void) {
+    public func read<R: Receivable>(
+        from characteristicIdentifier: CharacteristicIdentifier,
+        completion: @escaping (ReadResult<R>) -> Void
+    ) {
         precondition(
             listeners[characteristicIdentifier] == nil,
             "Cannot read from characteristic: \(characteristicIdentifier.description), which is already being listened on."
@@ -126,7 +134,9 @@ class Peripheral: NSObject {
             switch result {
             case .success:
                 weakSelf.addOperation(
-                    ReadCharacteristic(characteristicIdentifier: characteristicIdentifier, peripheral: weakSelf.cbPeripheral, callback: completion)
+                    ReadCharacteristic(
+                        characteristicIdentifier: characteristicIdentifier,
+                        peripheral: weakSelf.cbPeripheral, callback: completion)
                 )
             case .failure(let error):
                 completion(.failure(error))
@@ -135,7 +145,10 @@ class Peripheral: NSObject {
     }
 
     /// Write to a specified characteristic.
-    public func write<S: Sendable>(to characteristicIdentifier: CharacteristicIdentifier, value: S, type: CBCharacteristicWriteType = .withResponse, completion: @escaping (WriteResult) -> Void) {
+    public func write<S: Sendable>(
+        to characteristicIdentifier: CharacteristicIdentifier, value: S,
+        type: CBCharacteristicWriteType = .withResponse, completion: @escaping (WriteResult) -> Void
+    ) {
 
         debugLog("Requesting write on \(characteristicIdentifier.description)...")
 
@@ -166,10 +179,11 @@ class Peripheral: NSObject {
     }
 
     /// Listen for notifications on a specified characterstic.
-    public func listen<R: Receivable>( // swiftlint:disable:this cyclomatic_complexity
+    public func listen<R: Receivable>(  // swiftlint:disable:this cyclomatic_complexity
         to characteristicIdentifier: CharacteristicIdentifier,
         multipleListenOption option: MultipleListenOption,
-        completion: @escaping (ReadResult<R>) -> Void) {
+        completion: @escaping (ReadResult<R>) -> Void
+    ) {
 
         // Fail this duplicate listen early if an original listen is being installed or installed and was configured to trap.
         guard listeners[characteristicIdentifier]?.1 != .trap else {
@@ -180,7 +194,7 @@ class Peripheral: NSObject {
         // Add to the listeners cache if it doesn't exist, but only option is saved and callback is nil because this first listen is not installed yet.
         if listeners[characteristicIdentifier] == nil {
             listeners[characteristicIdentifier] = (nil, option)
-        } // If the listen already exists, don't overwrite its option.
+        }  // If the listen already exists, don't overwrite its option.
 
         debugLog("Requesting listen on \(characteristicIdentifier.description)...")
 
@@ -195,31 +209,41 @@ class Peripheral: NSObject {
                     ListenCharacteristic(
                         characteristicIdentifier: characteristicIdentifier,
                         peripheral: weakSelf.cbPeripheral,
-                        value: true) { result in
-                            switch result {
-                            case .success:
-                                guard let cachedListener = weakSelf.listeners[characteristicIdentifier] else {
-                                    fatalError("Installed a listen on characteristic \(characteristicIdentifier.description) but it is not cached.")
-                                }
-
-                                let originalMultipleListenOption = cachedListener.1
-
-                                switch originalMultipleListenOption {
-                                case .trap:
-                                    precondition(cachedListener.0 == nil, "Duplicated listen installed despite original listen was set to trap.")
-                                case .replaceable:
-                                    if let previousListenerCallback = cachedListener.0 {
-                                        previousListenerCallback(.failure(BluejayError.multipleListenReplaced))
-                                    }
-                                }
-
-                                weakSelf.listeners[characteristicIdentifier] = ({ dataResult in
-                                    completion(ReadResult<R>(dataResult: dataResult))
-                                }, originalMultipleListenOption)
-                            case .failure(let error):
-                                weakSelf.listeners[characteristicIdentifier] = nil
-                                completion(.failure(error))
+                        value: true
+                    ) { result in
+                        switch result {
+                        case .success:
+                            guard let cachedListener = weakSelf.listeners[characteristicIdentifier]
+                            else {
+                                fatalError(
+                                    "Installed a listen on characteristic \(characteristicIdentifier.description) but it is not cached."
+                                )
                             }
+
+                            let originalMultipleListenOption = cachedListener.1
+
+                            switch originalMultipleListenOption {
+                            case .trap:
+                                precondition(
+                                    cachedListener.0 == nil,
+                                    "Duplicated listen installed despite original listen was set to trap."
+                                )
+                            case .replaceable:
+                                if let previousListenerCallback = cachedListener.0 {
+                                    previousListenerCallback(
+                                        .failure(BluejayError.multipleListenReplaced))
+                                }
+                            }
+
+                            weakSelf.listeners[characteristicIdentifier] = (
+                                { dataResult in
+                                    completion(ReadResult<R>(dataResult: dataResult))
+                                }, originalMultipleListenOption
+                            )
+                        case .failure(let error):
+                            weakSelf.listeners[characteristicIdentifier] = nil
+                            completion(.failure(error))
+                        }
                     }
                 )
             case .failure(let error):
@@ -231,13 +255,16 @@ class Peripheral: NSObject {
 
     /**
      End listening on a specified characteristic.
-
+    
      Provides the ability to suppress the failure message to the listen callback. This is useful in the internal implimentation of some of the listening logic, since we want to be able to share the clear logic on a .done exit, but don't need to send a failure in that case.
-
+    
      - Note
      Currently this can also cancel a regular in-progress read as well, but that behaviour may change down the road.
      */
-    public func endListen(to characteristicIdentifier: CharacteristicIdentifier, error: Error? = nil, completion: ((WriteResult) -> Void)? = nil) {
+    public func endListen(
+        to characteristicIdentifier: CharacteristicIdentifier, error: Error? = nil,
+        completion: ((WriteResult) -> Void)? = nil
+    ) {
         listeners[characteristicIdentifier] = nil
 
         debugLog("Requesting end listen on \(characteristicIdentifier.description)...")
@@ -253,8 +280,9 @@ class Peripheral: NSObject {
                     ListenCharacteristic(
                         characteristicIdentifier: characteristicIdentifier,
                         peripheral: weakSelf.cbPeripheral,
-                        value: false) { result in
-                            completion?(result)
+                        value: false
+                    ) { result in
+                        completion?(result)
                     }
                 )
             case .failure(let error):
@@ -266,7 +294,7 @@ class Peripheral: NSObject {
     func broadcastErrorToListeners(_ error: Error) {
         listeners.values.forEach { $0.0?(.failure(error)) }
     }
-    
+
     /// Ask for the peripheral's maximum payload length in bytes for a single write request.
     public func maximumWriteValueLength(`for` writeType: CBCharacteristicWriteType) -> Int {
         return cbPeripheral.maximumWriteValueLength(for: writeType)
@@ -283,61 +311,77 @@ extension Peripheral: CBPeripheralDelegate {
 
     /// Captures CoreBluetooth's did discover services event and pass it to Bluejay's queue for processing.
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
-             // 新增：获取服务列表并触发对外回调
-              DispatchQueue.main.async { // 切换主线程（可选，适配UI回调）
-                  print("新增：获取服务列表并触发对外回调\(self.bluejay)")
-                  let services = peripheral.services // 获取发现的服务列表
-                  // 触发Bluejay单例的回调，传递「外设UUID + 服务列表 + 错误」
-                  self.bluejay?.onServicesDiscovered?(peripheral.identifier, services, error)
-              }
-        
+        // 新增：获取服务列表并触发对外回调
+        DispatchQueue.main.async {  // 切换主线程（可选，适配UI回调）
+            debugLog("新增：获取服务列表并触发对外回调\(self.bluejay)")
+            let services = peripheral.services  // 获取发现的服务列表
+            // 触发Bluejay单例的回调，传递「外设UUID + 服务列表 + 错误」
+            self.bluejay?.onServicesDiscovered?(peripheral.identifier, services, error)
+        }
+
         handle(event: .didDiscoverServices, error: error as NSError?)
     }
 
     /// Captures CoreBluetooth's did discover characteristics event and pass it to Bluejay's queue for processing.
-    public func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
-         // 新增：获取特征列表并触发对外回调
-             DispatchQueue.main.async {
-                 print("新增：获取特征列表并触发对外回调\(self.bluejay)")
+    public func peripheral(
+        _ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?
+    ) {
+        // 新增：获取特征列表并触发对外回调
+        DispatchQueue.main.async {
+            debugLog("新增：获取特征列表并触发对外回调\(self.bluejay)")
 
-                 let characteristics = service.characteristics
-                 self.bluejay?.onCharacteristicsDiscovered?(service.uuid, characteristics, error)
-             }
+            let characteristics = service.characteristics
+            self.bluejay?.onCharacteristicsDiscovered?(service.uuid, characteristics, error)
+        }
         handle(event: .didDiscoverCharacteristics, error: error as NSError?)
     }
 
     /// Captures CoreBluetooth's did write to charactersitic event and pass it to Bluejay's queue for processing.
-    public func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
+    public func peripheral(
+        _ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?
+    ) {
         handle(event: .didWriteCharacteristic(characteristic), error: error as NSError?)
     }
 
     /// Captures CoreBluetooth's did receive a notification/value from a characteristic event and pass it to Bluejay's queue for processing.
-    public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
+    public func peripheral(
+        _ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic,
+        error: Error?
+    ) {
         guard let characteristicIdentifier = CharacteristicIdentifier(characteristic) else {
-            debugLog("Received value update for characteristic (\(characteristic.uuid.uuidString) without a valid service. Update will be ignored")
+            debugLog(
+                "Received value update for characteristic (\(characteristic.uuid.uuidString) without a valid service. Update will be ignored"
+            )
             return
         }
 
-        guard let listener = listeners[characteristicIdentifier], let listenCallback = listener.0 else {
+        guard let listener = listeners[characteristicIdentifier], let listenCallback = listener.0
+        else {
             if delegate.isReading(characteristic: characteristicIdentifier) {
-                handle(event: .didReadCharacteristic(characteristic, characteristic.value ?? Data()), error: error as NSError?)
+                handle(
+                    event: .didReadCharacteristic(characteristic, characteristic.value ?? Data()),
+                    error: error as NSError?)
             } else if delegate.willEndListen(on: characteristicIdentifier) {
-                debugLog("""
+                debugLog(
+                    """
                     Received read event with value \(String(data: characteristic.value ?? Data(), encoding: .utf8) ?? "") \
                     on characteristic \(characteristic.debugDescription), \
                     but queue contains an end listen operation for this characteristic and should stop it soon.
                     """)
             } else {
                 if delegate.backgroundRestorationEnabled() {
-                    debugLog("""
+                    debugLog(
+                        """
                         Unhandled listen with value: \(String(data: characteristic.value ?? Data(), encoding: .utf8) ?? ""), \
                         on charactersitic: \(characteristic.debugDescription), \
                         from peripheral: \(identifier.description)
                         """)
 
-                    delegate.receivedUnhandledListen(from: self, on: characteristicIdentifier, with: characteristic.value)
+                    delegate.receivedUnhandledListen(
+                        from: self, on: characteristicIdentifier, with: characteristic.value)
                 } else {
-                    debugLog("""
+                    debugLog(
+                        """
                         Unhandled read event value: \(String(data: characteristic.value ?? Data(), encoding: .utf8) ?? ""), \
                         on charactersitic: \(characteristic.debugDescription)
                         """)
@@ -354,8 +398,13 @@ extension Peripheral: CBPeripheralDelegate {
     }
 
     /// Captures CoreBluetooth's did turn on or off notification/listening on a characteristic event and pass it to Bluejay's queue for processing.
-    public func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
-        handle(event: .didUpdateCharacteristicNotificationState(characteristic), error: error as NSError?)
+    public func peripheral(
+        _ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic,
+        error: Error?
+    ) {
+        handle(
+            event: .didUpdateCharacteristicNotificationState(characteristic),
+            error: error as NSError?)
     }
 
     /// Captures CoreBluetooth's did read RSSI event and pass it to Bluejay's queue for processing.
@@ -364,7 +413,9 @@ extension Peripheral: CBPeripheralDelegate {
     }
 
     /// Called when the peripheral removed or added services.
-    public func peripheral(_ peripheral: CBPeripheral, didModifyServices invalidatedServices: [CBService]) {
+    public func peripheral(
+        _ peripheral: CBPeripheral, didModifyServices invalidatedServices: [CBService]
+    ) {
         delegate.didModifyServices(
             from: self,
             invalidatedServices: invalidatedServices.map {
