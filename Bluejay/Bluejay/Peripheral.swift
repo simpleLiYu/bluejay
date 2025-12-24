@@ -283,11 +283,26 @@ extension Peripheral: CBPeripheralDelegate {
 
     /// Captures CoreBluetooth's did discover services event and pass it to Bluejay's queue for processing.
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
+             // 新增：获取服务列表并触发对外回调
+              DispatchQueue.main.async { // 切换主线程（可选，适配UI回调）
+                  print("新增：获取服务列表并触发对外回调\(self.bluejay)")
+                  let services = peripheral.services // 获取发现的服务列表
+                  // 触发Bluejay单例的回调，传递「外设UUID + 服务列表 + 错误」
+                  self.bluejay?.onServicesDiscovered?(peripheral.identifier, services, error)
+              }
+        
         handle(event: .didDiscoverServices, error: error as NSError?)
     }
 
     /// Captures CoreBluetooth's did discover characteristics event and pass it to Bluejay's queue for processing.
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
+         // 新增：获取特征列表并触发对外回调
+             DispatchQueue.main.async {
+                 print("新增：获取特征列表并触发对外回调\(self.bluejay)")
+
+                 let characteristics = service.characteristics
+                 self.bluejay?.onCharacteristicsDiscovered?(service.uuid, characteristics, error)
+             }
         handle(event: .didDiscoverCharacteristics, error: error as NSError?)
     }
 

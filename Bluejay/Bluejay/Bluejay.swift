@@ -171,6 +171,13 @@ public class Bluejay: NSObject { //swiftlint:disable:this type_body_length
     /// behaviour, and it may change eventually.
     public var broadcastErrorsToListeners: Bool = false
 
+    // MARK: - 新增：服务/特征发现回调（对外暴露）
+    /// 服务发现完成回调：返回「外设UUID + 服务列表 + 错误」
+    public var onServicesDiscovered: ((UUID, [CBService]?, Error?) -> Void)?
+    /// 特征发现完成回调：返回「服务UUID + 特征列表 + 错误」
+    public var onCharacteristicsDiscovered: ((CBUUID, [CBCharacteristic]?, Error?) -> Void)?
+    
+
     // MARK: - Logging
 
     /**
